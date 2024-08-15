@@ -1,10 +1,8 @@
 {-# OPTIONS_GHC -Wall   #-}
 {-# OPTIONS_GHC -Werror #-}
-
 {-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveFoldable    #-}
 {-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE LambdaCase        #-}
 
 ----------------------------------------------------------------------------
 -- |
@@ -33,29 +31,19 @@ module Combinators.Calculus
 import Combinators.MyPrelude
 
 import qualified Data.Set as Set
-
 import Control.Monad ( ap )
+import Data.Either (fromRight)
 
 ----------------------------------------------------------------------------
 ---- * Grammar
 
-data Expr a = Var a
-            | Com Constant
-            | (Expr a) :@ (Expr a)
-            deriving (Show, Eq, Functor, Foldable, Traversable)
-infixl 4 :@ 
+data Expr a = Var a | Com Constant | !(Expr a) :@ !(Expr a)
+  deriving (Show, Eq, Functor, Foldable, Traversable)
+infixl 4 :@
 
--- The atomic constants form our combinatory base
-data Constant = S
-              | K
-              | I
-              | B
-              | C
-              | W
-              | S'
-              | B'
-              | C'
-              deriving (Eq, Ord, Show)
+-- | The atomic constants form our combinatory base
+data Constant = S | K | I | B | C | W | S' | B' | C'
+  deriving (Eq, Ord, Show)
 
 instance Applicative Expr where
     pure  = Var
@@ -86,24 +74,17 @@ contract expr = case expr of
   Com C' :@ x :@ y :@ z :@ w -> Right $ x :@ (y :@ w) :@ z
   e                          -> Left  $ NotRedex e
 
-
--- Could use `Data.Either.fromRight` to make these functions clearer?
-
 -- | Contract a weak head redex if there is one
 whc :: Expr String -> Expr String
-whc = \case
-  (u :@ v) -> case contract (u :@ v) of
-    Right e -> e
-    Left _  -> whc u :@ v 
+whc expr = case expr of
+  (u :@ v) -> fromRight (whc u :@ v ) $ contract (u :@ v)
   u        -> u
 
 -- | Weak head normalisation contracts weak head redexes as much as possible
 -- to get an expression that is in weak head normal form
 whNorm :: Expr a -> Expr a
-whNorm = \case
-  (u :@ v) -> case contract (whNorm u :@ v) of
-    Right e -> whNorm e
-    Left _  -> whNorm u :@ v
+whNorm expr = case expr of
+  (u :@ v) -> let e = whNorm u :@ v in fromRight e (whNorm <$> contract e)
   t        -> t
     
 -- | Normalise an expression
