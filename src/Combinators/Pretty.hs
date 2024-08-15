@@ -43,13 +43,4 @@ pprNested :: String -> IO ()
 pprNested = putStrLn . render . nest 4 . text
 
 pprConstant :: Constant -> Doc
-pprConstant c = case c of
-    S  -> text "S"
-    K  -> text "K"
-    I  -> text "I"
-    B  -> text "B"
-    C  -> text "C"
-    W  -> text "W"
-    S' -> text "S'"
-    B' -> text "B'"
-    C' -> text "C'"
+pprConstant = text . show
